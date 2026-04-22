@@ -19,7 +19,9 @@ export async function middleware(req: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession()
   
   const isAuthPage = req.nextUrl.pathname.startsWith('/login') || 
-                     req.nextUrl.pathname.startsWith('/signup')
+                     req.nextUrl.pathname.startsWith('/signup') ||
+                     req.nextUrl.pathname.startsWith('/forgot-password') ||
+                     req.nextUrl.pathname.startsWith('/reset-password')
   const isPublicPage = req.nextUrl.pathname === '/'
   
   if (!session && !isAuthPage && !isPublicPage) {

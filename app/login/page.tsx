@@ -34,11 +34,15 @@ export default function LoginPage() {
     <div className="min-h-screen bg-white flex items-center justify-center px-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Snap Claim</h1>
-          <p className="text-gray-600">Snap. Submit. Done.</p>
+          <img 
+            src="/snapclaim-logo.png" 
+            alt="Snap Claim Logo" 
+            className="mx-auto h-24 mb-1"
+          />
+          <p className="text-gray-600 text-lg">Snap Confirm Submit</p>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-white border-2 border-blue-700 rounded-lg p-6 shadow-lg shadow-blue-400/30">
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <input

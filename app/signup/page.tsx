@@ -53,12 +53,16 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-4">
       <div className="max-w-md w-full">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Snap Claim</h1>
-          <p className="text-gray-600">Snap. Submit. Done.</p>
+        <div className="text-center mb-2">
+          <img 
+            src="/snapclaim-logo.png" 
+            alt="Snap Claim Logo" 
+            className="mx-auto h-24 mb-1"
+          />
+          <p className="text-gray-600 text-lg">Snap Confirm Submit</p>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-white border-2 border-blue-700 rounded-lg p-6 shadow-lg shadow-blue-400/30">
           <form onSubmit={handleSignup} className="space-y-4">
             <div>
               <input
@@ -107,7 +111,7 @@ export default function SignupPage() {
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <div className="font-medium">Business owner</div>
+                  <div className="font-medium text-blue-900">Business owner</div>
                   <div className="text-sm text-gray-600">I run my own business</div>
                 </div>
                 <div
@@ -118,7 +122,7 @@ export default function SignupPage() {
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <div className="font-medium">Accountant</div>
+                  <div className="font-medium text-blue-900">Accountant</div>
                   <div className="text-sm text-gray-600">I manage finances for others</div>
                 </div>
               </div>

@@ -1,0 +1,13 @@
+export default function ExpensesPage() {
+  return (
+    <div>
+      <h1 className="text-2xl font-semibold 
+        text-gray-900 mb-2">
+        Expenses
+      </h1>
+      <p className="text-gray-500">
+        Coming soon — building in Day 8
+      </p>
+    </div>
+  )
+}

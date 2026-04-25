@@ -2,170 +2,415 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 
+type UserRole = 'owner' | 'accountant' | 'manager' | 'employee'
+
+const roles = [
+  {
+    value: 'owner' as UserRole,
+    emoji: '👤',
+    title: 'Business Owner',
+    description: 'I run the business and capture receipts',
+  },
+  {
+    value: 'accountant' as UserRole,
+    emoji: '📋',
+    title: 'Accountant',
+    description: 'I review expenses and generate reports',
+  },
+  {
+    value: 'manager' as UserRole,
+    emoji: '👔',
+    title: 'Manager',
+    description: 'I approve team expense claims',
+  },
+  {
+    value: 'employee' as UserRole,
+    emoji: '👥',
+    title: 'Employee',
+    description: 'I submit expense claims for reimbursement',
+  },
+]
+
 export default function SignupPage() {
+  const router = useRouter()
+  const supabase = createClient()
+
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<'owner' | 'accountant' | null>(null)
+  const [selectedRole, setSelectedRole] = 
+    useState<UserRole>('owner')
+  const [inviteCode, setInviteCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const router = useRouter()
+  const [showConfirmation, setShowConfirmation] = 
+    useState(false)
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+  const showInviteCode =
+    selectedRole === 'employee' ||
+    selectedRole === 'manager'
+
+  async function handleSignup() {
     setError('')
 
+    if (!fullName.trim()) {
+      setError('Please enter your full name')
+      return
+    }
+    if (!email.trim()) {
+      setError('Please enter your email')
+      return
+    }
     if (password.length < 8) {
-      setError('Password must be at least 8 characters long')
-      setLoading(false)
+      setError('Password must be at least 8 characters')
+      return
+    }
+    if (showInviteCode && !inviteCode.trim()) {
+      setError('Please enter your company invite code')
       return
     }
 
-    if (!role) {
-      setError('Please select your role')
+    setLoading(true)
+
+    try {
+      // Validate invite code for employee and manager
+      if (showInviteCode && inviteCode.trim()) {
+        const { data: company, error: companyError } =
+          await supabase
+            .from('companies')
+            .select('id, name')
+            .eq('id', inviteCode.trim())
+            .single()
+
+        if (companyError || !company) {
+          setError(
+            'Invalid invite code. Please check with your employer.'
+          )
+          setLoading(false)
+          return
+        }
+      }
+
+      // Sign up the user
+      const { data, error: signUpError } =
+        await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            data: {
+              full_name: fullName.trim(),
+              role: selectedRole,
+            },
+            emailRedirectTo:
+              `${window.location.origin}/auth/callback`,
+          },
+        })
+
+      if (signUpError) {
+        setError(signUpError.message)
+        return
+      }
+
+      // Email already registered
+      if (data.user?.identities?.length === 0) {
+        setError(
+          'An account with this email already exists. Please log in.'
+        )
+        return
+      }
+
+      // Link employee or manager to company
+      if (
+        showInviteCode &&
+        inviteCode.trim() &&
+        data.user
+      ) {
+        const { data: company } = await supabase
+          .from('companies')
+          .select('id')
+          .eq('id', inviteCode.trim())
+          .single()
+
+        if (company) {
+          // @ts-ignore
+          await supabase
+            .from('profiles')
+            .update({
+              company_id: (company as any).id,
+              role: selectedRole,
+              can_approve: selectedRole === 'manager',
+              onboarded: true,
+            })
+            .eq('id', data.user.id)
+        }
+      }
+
+      // Email confirmation required
+      if (!data.session) {
+        setShowConfirmation(true)
+        return
+      }
+
+      // No confirmation needed
+      if (showInviteCode) {
+        router.push('/capture')
+      } else {
+        router.push('/onboarding/company')
+      }
+    } catch (e: any) {
+      setError(e.message || 'Something went wrong')
+    } finally {
       setLoading(false)
-      return
     }
+  }
 
-    const supabase = createClient()
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
-          role: role,
-        },
-      },
-    })
-
-    if (error) {
-      setError(error.message)
-    } else {
-      router.push('/onboarding/company')
-    }
-    setLoading(false)
+  if (showConfirmation) {
+    return (
+      <div className="min-h-screen bg-gray-50 
+        flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white 
+          rounded-2xl shadow-sm border 
+          border-gray-200 p-8 text-center">
+          <div className="w-16 h-16 bg-green-100 
+            rounded-full flex items-center 
+            justify-center mx-auto mb-4">
+            <span className="text-3xl">📧</span>
+          </div>
+          <h2 className="text-xl font-bold 
+            text-gray-900 mb-2">
+            Check your email
+          </h2>
+          <p className="text-sm text-gray-500 mb-2">
+            We sent a confirmation link to:
+          </p>
+          <p className="text-sm font-medium 
+            text-gray-900 mb-6">
+            {email}
+          </p>
+          <p className="text-xs text-gray-400 mb-6">
+            Click the link in your email to activate 
+            your Snap Claim account. You will be 
+            redirected to your dashboard automatically.
+          </p>
+          <Link
+            href="/login"
+            className="text-sm text-green-700 
+              font-medium hover:underline"
+          >
+            Back to login
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center px-4">
-      <div className="max-w-md w-full">
-        <div className="text-center mb-2">
-          <div className="mx-auto mb-1">
-            <img 
-              src="/snapclaim-logo.png" 
-              alt="Snap Claim Logo" 
-              className="h-24 mx-auto"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                if (fallback) fallback.style.display = 'block';
-              }}
-            />
-            <div 
-              className="h-24 w-24 bg-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto"
-              style={{ display: 'none' }}
-            >
-              SC
+    <div className="min-h-screen bg-gray-50 
+      flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center 
+            gap-2 mb-2">
+            <div className="w-8 h-8 bg-green-700 
+              rounded-lg flex items-center 
+              justify-center">
+              <span className="text-white text-sm 
+                font-bold">S</span>
             </div>
+            <span className="text-xl font-bold 
+              text-gray-900">Snap Claim</span>
           </div>
-          <p className="text-gray-600 text-lg">Snap Confirm Submit</p>
+          <p className="text-sm text-gray-500">
+            Snap. Submit. Done.
+          </p>
         </div>
 
-        <div className="bg-white border-2 border-blue-700 rounded-lg p-6 shadow-lg shadow-blue-400/30">
-          <form onSubmit={handleSignup} className="space-y-4">
-            <div>
+        <div className="bg-white rounded-2xl 
+          shadow-sm border border-gray-200 p-8">
+
+          <h2 className="text-xl font-bold 
+            text-gray-900 mb-6">
+            Create your account
+          </h2>
+
+          {/* Full name */}
+          <div className="mb-4">
+            <label className="block text-sm 
+              font-medium text-gray-700 mb-1.5">
+              Full name
+            </label>
+            <input
+              type="text"
+              value={fullName}
+              onChange={(e) => 
+                setFullName(e.target.value)}
+              placeholder="Sarah Tan"
+              className="w-full px-4 py-2.5 border 
+                border-gray-300 rounded-lg text-sm 
+                focus:outline-none focus:ring-2 
+                focus:ring-green-600 
+                focus:border-transparent"
+            />
+          </div>
+
+          {/* Email */}
+          <div className="mb-4">
+            <label className="block text-sm 
+              font-medium text-gray-700 mb-1.5">
+              Email address
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => 
+                setEmail(e.target.value)}
+              placeholder="sarah@company.com"
+              className="w-full px-4 py-2.5 border 
+                border-gray-300 rounded-lg text-sm 
+                focus:outline-none focus:ring-2 
+                focus:ring-green-600 
+                focus:border-transparent"
+            />
+          </div>
+
+          {/* Password */}
+          <div className="mb-5">
+            <label className="block text-sm 
+              font-medium text-gray-700 mb-1.5">
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => 
+                setPassword(e.target.value)}
+              placeholder="Minimum 8 characters"
+              className="w-full px-4 py-2.5 border 
+                border-gray-300 rounded-lg text-sm 
+                focus:outline-none focus:ring-2 
+                focus:ring-green-600 
+                focus:border-transparent"
+            />
+          </div>
+
+          {/* Role selector */}
+          <div className="mb-4">
+            <label className="block text-sm 
+              font-medium text-gray-700 mb-2">
+              How will you use Snap Claim?
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {roles.map((role) => (
+                <button
+                  key={role.value}
+                  type="button"
+                  onClick={() => 
+                    setSelectedRole(role.value)}
+                  className={`text-left p-3 
+                    rounded-xl border-2 
+                    transition-all
+                    ${selectedRole === role.value
+                      ? 'border-green-700 bg-green-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                >
+                  <div className="text-xl mb-1">
+                    {role.emoji}
+                  </div>
+                  <div className="text-xs font-semibold 
+                    text-gray-900">
+                    {role.title}
+                  </div>
+                  <div className="text-xs text-gray-500 
+                    mt-0.5 leading-tight">
+                    {role.description}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Invite code — only for employee/manager */}
+          {showInviteCode && (
+            <div className="mb-4 p-4 bg-blue-50 
+              rounded-lg border border-blue-200">
+              <label className="block text-sm 
+                font-medium text-gray-700 mb-1.5">
+                Company invite code
+              </label>
               <input
                 type="text"
-                placeholder="Full name"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
+                value={inviteCode}
+                onChange={(e) =>
+                  setInviteCode(e.target.value.trim())}
+                placeholder="Enter code from your employer"
+                className="w-full px-4 py-2.5 border 
+                  border-gray-300 rounded-lg text-sm 
+                  bg-white focus:outline-none 
+                  focus:ring-2 focus:ring-green-600 
+                  focus:border-transparent"
               />
+              <p className="text-xs text-gray-500 
+                mt-1.5">
+                Ask your employer for the company 
+                invite code from their Settings page
+              </p>
             </div>
+          )}
 
-            <div>
-              <input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
+          {/* Error message */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 
+              border border-red-200 rounded-lg">
+              <p className="text-sm text-red-600">
+                {error}
+              </p>
             </div>
+          )}
 
-            <div>
-              <input
-                type="password"
-                placeholder="Password (minimum 8 characters)"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-                minLength={8}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                I am a...
-              </label>
-              <div className="space-y-2">
-                <div
-                  onClick={() => setRole('owner')}
-                  className={`border rounded-lg p-3 cursor-pointer transition-colors ${
-                    role === 'owner'
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="font-medium text-blue-900">Business owner</div>
-                  <div className="text-sm text-gray-600">I run my own business</div>
-                </div>
-                <div
-                  onClick={() => setRole('accountant')}
-                  className={`border rounded-lg p-3 cursor-pointer transition-colors ${
-                    role === 'accountant'
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="font-medium text-blue-900">Accountant</div>
-                  <div className="text-sm text-gray-600">I manage finances for others</div>
-                </div>
-              </div>
-            </div>
-
-            {error && (
-              <div className="text-red-600 text-sm">{error}</div>
+          {/* Submit button */}
+          <button
+            onClick={handleSignup}
+            disabled={loading}
+            className="w-full bg-green-700 
+              text-white py-2.5 rounded-lg 
+              text-sm font-medium 
+              hover:bg-green-800 
+              transition-colors
+              disabled:opacity-50 
+              disabled:cursor-not-allowed
+              flex items-center 
+              justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 
+                  border-white border-t-transparent 
+                  rounded-full animate-spin" />
+                Creating account...
+              </>
+            ) : (
+              'Create account'
             )}
+          </button>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+          {/* Login link */}
+          <p className="text-center text-sm 
+            text-gray-500 mt-4">
+            Already have an account?{' '}
+            <Link
+              href="/login"
+              className="text-green-700 font-medium 
+                hover:underline"
             >
-              {loading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              ) : (
-                'Create account'
-              )}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Already have an account?{' '}
-              <a href="/login" className="text-blue-600 hover:underline">
-                Log in
-              </a>
-            </p>
-          </div>
+              Log in
+            </Link>
+          </p>
         </div>
       </div>
     </div>

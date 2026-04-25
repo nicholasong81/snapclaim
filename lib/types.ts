@@ -1,21 +1,22 @@
-import type { Database } from './database.types'
+import type { Database, Tables } from 
+  './database.types'
 
 export type Company = 
-  Database['public']['Tables']['companies']['Row']
+  Tables<'companies'>
 export type Profile = 
-  Database['public']['Tables']['profiles']['Row']
+  Tables<'profiles'>
 export type CompanyCategory = 
-  Database['public']['Tables']['company_categories']['Row']
+  Tables<'company_categories'>
 export type ClaimBatch = 
-  Database['public']['Tables']['claim_batches']['Row']
+  Tables<'claim_batches'>
 export type Receipt = 
-  Database['public']['Tables']['receipts']['Row']
+  Tables<'receipts'>
 export type DirectorLoanEntry = 
-  Database['public']['Tables']['director_loan_entries']['Row']
+  Tables<'director_loan_entries'>
 export type SpendingPolicy = 
-  Database['public']['Tables']['spending_policies']['Row']
+  Tables<'spending_policies'>
 export type Notification = 
-  Database['public']['Tables']['notifications']['Row']
+  Tables<'notifications'>
 
 export type UserRole = 
   'owner' | 'accountant' | 'employee' | 'manager'
@@ -25,35 +26,29 @@ export type ReceiptStatus =
   'draft' | 'submitted' | 'inbox' | 
   'confirmed' | 'rejected' | 'paid'
 export type BatchStatus = 
-  'draft' | 'submitted' | 'approved' | 'rejected' | 'paid'
+  'draft' | 'submitted' | 'approved' | 
+  'rejected' | 'paid'
 export type CompanyPlan = 
   'solo' | 'team' | 'business'
 export type RepaymentMethod = 
   'bank_transfer' | 'cash' | 'payroll' | 'other'
-export type NotificationType =
-  'claim_submitted' | 'claim_approved' | 'claim_rejected' |
-  'batch_submitted' | 'batch_approved' | 'loan_repaid'
 
 export type ReceiptWithProfile = Receipt & {
-  profiles: Pick<Profile, 'full_name' | 'role'> | null
-}
-
-export type ReceiptWithBatch = Receipt & {
-  claim_batches: Pick<ClaimBatch, 'title' | 'status' | 'period_start' | 'period_end'> | null
+  profiles: Pick<
+    Profile, 'full_name' | 'role'
+  > | null
 }
 
 export type BatchWithReceipts = ClaimBatch & {
   receipts: Receipt[]
-  profiles: Pick<Profile, 'full_name' | 'role'> | null
-}
-
-export type DirectorLoanWithReceipt = DirectorLoanEntry & {
-  receipts: Pick<Receipt, 'vendor' | 'date' | 'category' | 'amount'> | null
+  profiles: Pick<
+    Profile, 'full_name' | 'role'
+  > | null
 }
 
 export const DEFAULT_CATEGORIES = [
   'Meals',
-  'Transport', 
+  'Transport',
   'Software',
   'Equipment',
   'Supplies',
@@ -62,7 +57,5 @@ export const DEFAULT_CATEGORIES = [
   'Travel',
   'Home Office',
   'Courses & Learning',
-  'Other'
+  'Other',
 ] as const
-
-export type DefaultCategory = typeof DEFAULT_CATEGORIES[number]

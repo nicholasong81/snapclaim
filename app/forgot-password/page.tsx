@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
+import Logo from '@/components/Logo'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -30,26 +31,8 @@ export default function ForgotPasswordPage() {
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-4">
       <div className="max-w-md w-full">
-        <div className="text-center mb-8">
-          <div className="mx-auto mb-1">
-            <img 
-              src="/snapclaim-logo.png" 
-              alt="Snap Claim Logo" 
-              className="h-24 mx-auto"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                if (fallback) fallback.style.display = 'block';
-              }}
-            />
-            <div 
-              className="h-24 w-24 bg-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto"
-              style={{ display: 'none' }}
-            >
-              SC
-            </div>
-          </div>
-          <p className="text-gray-600 text-lg">Snap Confirm Submit</p>
+        <div className="flex justify-center mb-8">
+          <Logo size="lg" showTagline={true} />
         </div>
 
         <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">

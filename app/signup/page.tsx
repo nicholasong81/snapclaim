@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
+import Logo from '@/components/Logo'
 
 type UserRole = 'owner' | 'accountant' | 'manager' | 'employee'
 
@@ -213,21 +214,8 @@ export default function SignupPage() {
       <div className="w-full max-w-md">
 
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center 
-            gap-2 mb-2">
-            <div className="w-8 h-8 bg-green-700 
-              rounded-lg flex items-center 
-              justify-center">
-              <span className="text-white text-sm 
-                font-bold">S</span>
-            </div>
-            <span className="text-xl font-bold 
-              text-gray-900">Snap Claim</span>
-          </div>
-          <p className="text-sm text-gray-500">
-            Snap. Submit. Done.
-          </p>
+        <div className="flex justify-center mb-8">
+          <Logo size="lg" showTagline={true} />
         </div>
 
         <div className="bg-white rounded-2xl 

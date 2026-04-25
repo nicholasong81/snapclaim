@@ -1,10 +1,5 @@
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase-server'
-import { 
-  getServerProfile,
-  getServerCompany,
-  getServerInboxCount
-} from '@/lib/db'
 import Sidebar from '@/components/dashboard/Sidebar'
 import TopBar from '@/components/dashboard/TopBar'
 import BottomNav from '@/components/dashboard/BottomNav'
@@ -26,31 +21,44 @@ export default async function DashboardLayout({
     redirect('/login')
   }
 
-  const profile = await getServerProfile(
-    session.user.id
-  )
+  // Get profile with explicit typing
+  const { data: profileData } = await supabase
+    .from('profiles')
+    .select('full_name, role, company_id, onboarded')
+    .eq('id', session.user.id)
+    .single() as any
 
-  if (!profile) {
+  // Type guard — redirect if no profile
+  if (!profileData) {
     redirect('/login')
   }
 
-  if (!profile.onboarded) {
+  // Redirect to onboarding if not complete
+  if (!profileData.onboarded) {
     redirect('/onboarding/company')
   }
 
+  // Get inbox count — only if company exists
   let inboxCount = 0
   let companyName = 'My Company'
 
-  if (profile.company_id) {
-    inboxCount = await getServerInboxCount(
-      profile.company_id
-    )
+  if (profileData.company_id) {
+    const { count } = await supabase
+      .from('receipts')
+      .select('id', { count: 'exact', head: true })
+      .eq('company_id', profileData.company_id)
+      .eq('status', 'inbox')
 
-    const company = await getServerCompany(
-      profile.company_id
-    )
+    inboxCount = count ?? 0
 
-    companyName = company?.name ?? 'My Company'
+    // Get company name
+    const { data: companyData } = await supabase
+      .from('companies')
+      .select('name')
+      .eq('id', profileData.company_id)
+      .single() as any
+
+    companyName = companyData?.name ?? 'My Company'
   }
 
   return (
@@ -63,7 +71,7 @@ export default async function DashboardLayout({
         hidden md:block">
         <Sidebar
           inboxCount={inboxCount}
-          userRole={profile.role ?? 'owner'}
+          userRole={profileData.role ?? 'owner'}
           companyName={companyName}
         />
       </aside>
@@ -73,8 +81,8 @@ export default async function DashboardLayout({
         flex flex-col">
         
         <TopBar
-          fullName={profile.full_name}
-          role={profile.role ?? 'owner'}
+          fullName={profileData.full_name}
+          role={profileData.role ?? 'owner'}
         />
 
         {/* Page content */}

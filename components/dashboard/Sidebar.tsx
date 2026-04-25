@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import Logo from '@/components/Logo'
 
 const navItems = [
   {
@@ -53,19 +54,11 @@ export default function Sidebar({
     <div className="flex flex-col h-full">
       
       {/* Logo area */}
-      <div className="px-5 py-5 border-b border-gray-100">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-green-700 rounded-md flex items-center justify-center">
-            <span className="text-white text-xs font-bold">S</span>
-          </div>
-          <div>
-            <div className="text-sm font-bold text-gray-900 leading-none">
-              Snap Claim
-            </div>
-            <div className="text-xs text-gray-400 mt-0.5 truncate max-w-32">
-              {companyName}
-            </div>
-          </div>
+      <div className="px-5 py-5 border-b 
+        border-gray-100">
+        <Logo size="sm" showTagline={false} />
+        <div className="text-xs text-gray-400 mt-1 truncate max-w-32">
+          {companyName}
         </div>
       </div>
 

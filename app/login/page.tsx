@@ -12,23 +12,41 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const router = useRouter()
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+  async function handleLogin() {
     setError('')
+    setLoading(true)
 
-    const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      const supabase = createClient()
+      const { data, error } = 
+        await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        })
 
-    if (error) {
-      setError(error.message)
-    } else {
+      if (error) {
+        setError(error.message)
+        return
+      }
+
+      if (!data.session) {
+        setError(
+          'Login failed — please check your ' +
+          'email and password'
+        )
+        return
+      }
+
       router.push('/dashboard')
+      router.refresh()
+    } catch (e: unknown) {
+      const msg = e instanceof Error 
+        ? e.message 
+        : 'Something went wrong'
+      setError(msg)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
@@ -39,7 +57,7 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-white border-2 border-blue-700 rounded-lg p-6 shadow-lg shadow-blue-400/30">
-          <form onSubmit={handleLogin} className="space-y-4">
+          <div className="space-y-4">
             <div>
               <input
                 type="email"
@@ -71,11 +89,17 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="text-red-600 text-sm">{error}</div>
+              <div className="mb-4 p-4 bg-red-50 
+                border border-red-300 rounded-lg">
+                <p className="text-sm text-red-800">
+                  {error}
+                </p>
+              </div>
             )}
 
             <button
-              type="submit"
+              type="button"
+              onClick={handleLogin}
               disabled={loading}
               className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
@@ -85,7 +109,7 @@ export default function LoginPage() {
                 'Log in'
               )}
             </button>
-          </form>
+          </div>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">

@@ -3,29 +3,22 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import Logo from '@/components/Logo'
 
 const DEFAULT_CATEGORIES = [
-  'Meals',
-  'Transport',
-  'Software',
-  'Equipment',
-  'Supplies',
-  'Marketing',
-  'Professional Services',
-  'Travel',
-  'Home Office',
-  'Courses & Learning',
-  'Other',
+  'Meals', 'Transport', 'Software',
+  'Equipment', 'Supplies', 'Marketing',
+  'Professional Services', 'Travel',
+  'Home Office', 'Courses & Learning', 'Other',
 ]
 
 export default function OnboardingCompanyPage() {
   const router = useRouter()
-  const supabase = createClient()
-
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [debug, setDebug] = useState('')
   const [companyName, setCompanyName] = useState('')
-  const [gstRegistered, setGstRegistered] =
+  const [gstRegistered, setGstRegistered] = 
     useState(false)
 
   async function handleNext() {
@@ -36,46 +29,77 @@ export default function OnboardingCompanyPage() {
 
     setLoading(true)
     setError('')
+    setDebug('Starting...')
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      const supabase = createClient()
 
-      if (!user) {
-        setError('Not authenticated')
+      // Step 1: Get current user
+      setDebug('Getting user...')
+      const { data: userData, error: userError } = 
+        await supabase.auth.getUser()
+
+      if (userError) {
+        setError('Auth error: ' + userError.message)
         return
       }
 
-      // Create company
-      const { data: companyData, error: ce } =
+      if (!userData.user) {
+        setError(
+          'No user found. Please log in again.'
+        )
+        router.push('/login')
+        return
+      }
+
+      const userId = userData.user.id
+      setDebug('User found: ' + userId)
+
+      // Step 2: Create company
+      setDebug('Creating company...')
+      const { data: companyData, error: ce } = 
         await supabase
           .from('companies')
           .insert({
             name: companyName.trim(),
             gst_registered: gstRegistered,
+            default_currency: 'SGD',
+            plan: 'solo',
           })
           .select('id')
           .single()
 
-      if (ce || !companyData) {
-        throw new Error(
-          ce?.message ?? 'Failed to create company'
-        )
+      if (ce) {
+        setError('Company error: ' + ce.message)
+        setDebug('Company failed: ' + ce.message)
+        return
       }
 
-      const companyId = (companyData as { id: string }).id
+      if (!companyData) {
+        setError('Company creation returned no data')
+        return
+      }
 
-      // Link profile to company
-      // @ts-ignore
+      const companyId = companyData.id
+      setDebug('Company created: ' + companyId)
+
+      // Step 3: Link profile to company
+      setDebug('Linking profile...')
       const { error: pe } = await supabase
         .from('profiles')
         .update({ company_id: companyId })
-        .eq('id', user.id)
+        .eq('id', userId)
 
-      if (pe) throw new Error(pe.message)
+      if (pe) {
+        setError('Profile error: ' + pe.message)
+        setDebug('Profile failed: ' + pe.message)
+        return
+      }
 
-      // Insert default categories
+      setDebug('Profile linked successfully')
+
+      // Step 4: Insert default categories
+      setDebug('Adding categories...')
       const categories = DEFAULT_CATEGORIES.map(
         (name) => ({
           company_id: companyId,
@@ -85,36 +109,47 @@ export default function OnboardingCompanyPage() {
         })
       )
 
-      // @ts-ignore
-      await supabase
+      const { error: catError } = await supabase
         .from('company_categories')
         .insert(categories)
 
+      if (catError) {
+        console.warn(
+          'Category insert warning:', 
+          catError.message
+        )
+        // Non-fatal — continue anyway
+      }
+
+      setDebug('All done — going to role page')
+
       router.push('/onboarding/role')
     } catch (e: unknown) {
-      const msg =
-        e instanceof Error
-          ? e.message
-          : 'Something went wrong'
-      setError(msg)
+      const msg = e instanceof Error 
+        ? e.message 
+        : 'Unknown error'
+      setError('Unexpected error: ' + msg)
+      setDebug('Caught error: ' + msg)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm
-      border border-gray-200 p-8">
+    <div className="bg-white rounded-2xl 
+      shadow-sm border border-gray-200 p-8">
 
-      <div className="flex items-center gap-2 mb-6">
-        <div className="flex items-center gap-1.5">
+      <div className="flex items-center 
+        gap-2 mb-6">
+        <div className="flex items-center 
+          gap-1.5">
           {[1, 2, 3].map((s) => (
             <div
               key={s}
               className={`h-1.5 rounded-full
                 transition-all
                 ${s === 1
-                  ? 'w-6 bg-green-700'
+                  ? 'w-6 bg-blue-600'
                   : 'w-3 bg-gray-200'
                 }`}
             />
@@ -148,7 +183,7 @@ export default function OnboardingCompanyPage() {
           className="w-full px-4 py-2.5 border
             border-gray-300 rounded-lg text-sm
             focus:outline-none focus:ring-2
-            focus:ring-green-600
+            focus:ring-blue-600
             focus:border-transparent"
         />
       </div>
@@ -174,13 +209,14 @@ export default function OnboardingCompanyPage() {
             rounded-full transition-colors
             duration-200
             ${gstRegistered
-              ? 'bg-green-700'
+              ? 'bg-blue-600'
               : 'bg-gray-300'
             }`}
         >
           <span
-            className={`absolute top-0.5 left-0.5
-              w-5 h-5 bg-white rounded-full shadow
+            className={`absolute top-0.5 
+              left-0.5 w-5 h-5 bg-white 
+              rounded-full shadow
               transition-transform duration-200
               ${gstRegistered
                 ? 'translate-x-5'
@@ -190,19 +226,35 @@ export default function OnboardingCompanyPage() {
         </button>
       </div>
 
+      {/* Error display */}
       {error && (
-        <p className="text-sm text-red-600 mb-4">
-          {error}
-        </p>
+        <div className="mb-4 p-4 bg-red-50
+          border border-red-300 rounded-lg">
+          <p className="text-sm font-medium
+            text-red-800">
+            {error}
+          </p>
+        </div>
+      )}
+
+      {/* Debug display — remove before launch */}
+      {debug && (
+        <div className="mb-4 p-3 bg-blue-50
+          border border-blue-200 rounded-lg">
+          <p className="text-xs text-blue-700
+            font-mono">
+            Debug: {debug}
+          </p>
+        </div>
       )}
 
       <button
         type="button"
         onClick={handleNext}
         disabled={loading}
-        className="w-full bg-green-700 text-white
+        className="w-full bg-blue-600 text-white
           py-2.5 rounded-lg text-sm font-medium
-          hover:bg-green-800 transition-colors
+          hover:bg-blue-700 transition-colors
           disabled:opacity-50
           disabled:cursor-not-allowed
           flex items-center justify-center gap-2"
@@ -212,7 +264,7 @@ export default function OnboardingCompanyPage() {
             <div className="w-4 h-4 border-2
               border-white border-t-transparent
               rounded-full animate-spin" />
-            Setting up...
+            {debug || 'Setting up...'}
           </>
         ) : (
           'Continue →'

@@ -1,12 +1,12 @@
-import { createServerClient as createSSRServerClient, 
+import { createServerClient as createSSRClient,
   type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from '@/lib/database.types'
 
 export function createServerClient() {
   const cookieStore = cookies()
-  
-  return createSSRServerClient<Database>(
+
+  return createSSRClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -14,24 +14,28 @@ export function createServerClient() {
         get(name: string) {
           return cookieStore.get(name)?.value
         },
-        set(name: string, value: string, 
+        set(name: string, value: string,
           options: CookieOptions) {
           try {
-            cookieStore.set({ 
-              name, value, ...options 
+            cookieStore.set({
+              name,
+              value,
+              ...options,
             })
           } catch {
-            // Server component - ignore
+            // Read-only in Server Components
           }
         },
-        remove(name: string, 
+        remove(name: string,
           options: CookieOptions) {
           try {
-            cookieStore.set({ 
-              name, value: '', ...options 
+            cookieStore.set({
+              name,
+              value: '',
+              ...options,
             })
           } catch {
-            // Server component - ignore
+            // Read-only in Server Components
           }
         },
       },

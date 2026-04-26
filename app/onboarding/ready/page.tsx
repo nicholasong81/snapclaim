@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase'
+import { markOnboardedAction } 
+  from '@/app/actions/onboarding'
 
 const steps = [
   {
@@ -24,28 +25,12 @@ const steps = [
 
 export default function OnboardingReadyPage() {
   const router = useRouter()
-  const supabase = createClient()
   const marked = useRef(false)
 
   useEffect(() => {
     if (marked.current) return
     marked.current = true
-
-    async function markOnboarded() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) return
-
-      // @ts-ignore
-      await supabase
-        .from('profiles')
-        .update({ onboarded: true })
-        .eq('id', user.id)
-    }
-
-    markOnboarded()
+    markOnboardedAction()
   }, [])
 
   return (
@@ -55,7 +40,7 @@ export default function OnboardingReadyPage() {
       <div className="flex items-center
         justify-center gap-2 mb-6">
         <div className="flex items-center gap-1.5">
-          {[1, 2, 3].map((s) => (
+          {[1, 2].map((s) => (
             <div
               key={s}
               className="h-1.5 w-6 rounded-full
@@ -64,7 +49,7 @@ export default function OnboardingReadyPage() {
           ))}
         </div>
         <span className="text-xs text-gray-400">
-          Step 3 of 3
+          Step 2 of 2
         </span>
       </div>
 

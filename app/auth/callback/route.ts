@@ -3,7 +3,8 @@ import { createServerClient,
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import type { Database } from '@/lib/database.types'
+import type { Database } 
+  from '@/lib/database.types'
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
@@ -20,47 +21,38 @@ export async function GET(request: NextRequest) {
         },
         set(name: string, value: string,
           options: CookieOptions) {
-          cookieStore.set({ 
-            name, value, ...options 
-          })
+          try {
+            cookieStore.set({
+              name, value, ...options
+            })
+          } catch {}
         },
         remove(name: string,
           options: CookieOptions) {
-          cookieStore.set({ 
-            name, value: '', ...options 
-          })
+          try {
+            cookieStore.set({
+              name, value: '', ...options
+            })
+          } catch {}
         },
       },
     }
   )
 
   if (code) {
-    await supabase.auth.exchangeCodeForSession(code)
-  }
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  if (!session) {
-    return NextResponse.redirect(
-      new URL('/login', request.url)
-    )
-  }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('onboarded')
-    .eq('id', session.user.id)
-    .single()
-
-  if (!profile?.onboarded) {
-    return NextResponse.redirect(
-      new URL('/onboarding/company', request.url)
-    )
+    const { error } = 
+      await supabase.auth.exchangeCodeForSession(
+        code
+      )
+    
+    if (error) {
+      return NextResponse.redirect(
+        new URL('/login?error=callback', request.url)
+      )
+    }
   }
 
   return NextResponse.redirect(
-    new URL('/dashboard', request.url)
+    new URL('/onboarding/company', request.url)
   )
 }
